@@ -1,0 +1,38 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    api 'io.rsocket:rsocket-core:0.12.2-RC2'
+    api 'io.rsocket:rsocket-load-balancer:0.12.2-RC2'
+    api 'io.rsocket:rsocket-transport-netty:0.12.2-RC2'
+
+    implementation 'org.asynchttpclient:async-http-client:2.8.1'
+    implementation 'com.google.code.gson:gson:2.8.5'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.4.2'
+    testImplementation 'org.mockito:mockito-core:2.27.0'
+}
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    archiveClassifier = 'sources'
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.dwolla'
+            artifactId = 'rsocket-consul-java'
+            version = '0.0.1'
+
+            from components.java
+            artifact sourcesJar
+        }
+    }
+}
