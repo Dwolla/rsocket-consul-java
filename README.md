@@ -1,6 +1,7 @@
 # rsocket-consul-java
 A library for streaming healthy service instances in Consul to the RSocket load balancer
 
+[![Build Status](https://travis-ci.org/Dwolla/rsocket-consul-java.svg?branch=master)](https://travis-ci.org/Dwolla/rsocket-consul-java)
 
 ## Usage
 ```java
