@@ -4,6 +4,8 @@ import com.dwolla.rsocket.consul.HealthDto;
 import com.dwolla.rsocket.consul.HttpClient;
 import com.dwolla.rsocket.consul.SimpleResponse;
 import com.google.gson.Gson;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
@@ -19,6 +21,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ConsulHealthStream implements HealthStream {
+  private Logger logger = LoggerFactory.getLogger(getClass());
+
+  private final String healthUrl = "%s/v1/health/service/%s?passing=true&index=%d&wait=1m";
   private final Gson gson = new Gson();
   private final HttpClient client;
   private String consulHost;
@@ -34,25 +39,25 @@ public class ConsulHealthStream implements HealthStream {
   }
 
   private void startLoop(final Consumer<Set<Address>> callback, final String serviceName) {
+    logger.debug("Starting health check loop for service={}", serviceName);
     Recursive<Function<Integer, CompletableFuture<Integer>>> r = new Recursive<>();
     r.func =
         index ->
             client
-                .get(
-                    String.format(
-                        "%s/v1/health/service/%s?passing=true&index=%d&wait=1m",
-                        consulHost, serviceName, index))
+                .get(String.format(healthUrl, consulHost, serviceName, index))
                 .thenApply(
                     res -> {
                       int nextIdx = getNextIdxFrom(res);
 
                       if (nextIdx > index) callback.accept(getAddressesFrom(res.getBody()));
+                      else logger.debug("Received an index: {} that was less than the prior index: {}.", nextIdx, index);
 
                       return nextIdx;
                     })
                 .whenComplete(
                     (nextId, th) -> {
                       if (th != null) {
+                        logger.warn("Got an exception while long polling Consul.", th);
                         Mono.delay(Duration.ofSeconds(5)).subscribe(i -> r.func.apply(0));
                       } else {
                         r.func.apply(nextId);
