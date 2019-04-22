@@ -20,7 +20,7 @@ deploy:
   api_key:
     secure: VPgs2g3AryHvWEsDp4dODjVGZVaS9qH2x3NB5GUvWRAUV2ylWgT44xCtSzo3jvHK/AHyf6YaStUIdZq5nogArPkg3uO1sp669H1d0LmQ/18rwlNwLBDn0mHiiR27GhJe70LI/X2MrRb66o8dyj5Scmg/yWMiXS7cV2vVN9d7CfKebsJkEVbwqQojZ2kLiww64USGJix51rJqJaDKWE9/YjlAmGcWMEDahe3fQg0ctBnpdKeis1TOkJUddd2br4s06SeKaHmahcUkP1Y3pX2vgNzeGtEWDVbbIHNombmSeXektJGUwfi5Ww/p1XULDZUQ4ObKSM+4EYeRqAHZCq38qXglTQDNZk3YDiclgyPx2XotOKvbVaG33p4ztkMupvEC+EMG487RvOFrVTfKVFvelNlFoGMI+NtD9/Eevr0JgtOi3dgrLYK2zz0yMs/YMx+yUj5WnTAKyrNsF/J6OopHSiprgT+F1Hbov3n8rWxBkgErjmI8ZmH45OTY869tV7mVkedHmKoUIe4DHe5D9aAReQLAhVCZfgkprICTkXro4oxHmXc2nnR2m+8hUNeXSTfLvgTxGTutqE1tfYp/k8YjrAsXuttDJb4reHE/I6TWSYZOMAFf9+zD9hft05oAMaqyauXt9v/Hm1MV8B98cEmOvNrGFXpD+Yir0Zv/ZXTq0HU=
   file_glob: true
-  file: build/libs/*
+  file: build/libs/*.jar
   on:
     repo: Dwolla/rsocket-consul-java
     tags: true
