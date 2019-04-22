@@ -1,7 +1,11 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'com.jfrog.bintray' version '1.8.4'
 }
+
+group = 'com.dwolla'
+version = '0.0.1'
 
 repositories {
     jcenter()
@@ -25,15 +29,46 @@ task sourcesJar(type: Jar) {
     archiveClassifier = 'sources'
 }
 
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier 'javadoc'
+    from javadoc.destinationDir
+}
+
 publishing {
     publications {
-        maven(MavenPublication) {
-            groupId = 'com.dwolla'
-            artifactId = 'rsocket-consul-java'
-            version = '0.0.1'
-
+        mavenJava(MavenPublication) {
             from components.java
             artifact sourcesJar
+            artifact javadocJar
+
+            pom {
+                description = 'A library for streaming healthy service instances in Consul to the RSocket load balancer'
+                name = project.name
+                url = 'https://github.com/Dwolla/rsocket-consul-java'
+            }
+        }
+    }
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+
+    publications = ['mavenJava']
+    publish = true
+    override = true
+
+    pkg {
+        repo = 'maven'
+        name = 'rsocket-consul-java'
+        userOrg = 'dwolla'
+        licenses = ['MIT']
+        vcsUrl = 'https://github.com/Dwolla/rsocket-consul-java.git'
+
+        version {
+            name = project.version
+            released = new Date()
+            vcsTag = project.version
         }
     }
 }

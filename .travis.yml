@@ -1,17 +1,28 @@
 language: java
 install: true
-
 jdk:
-  - oraclejdk8
-
+- oraclejdk8
 script:
-  - ./gradlew build
-
+- "./gradlew build"
 before_cache:
 - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
 - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
-
 cache:
   directories:
-    - $HOME/.gradle/caches/
-    - $HOME/.gradle/wrapper/
+  - "$HOME/.gradle/caches/"
+  - "$HOME/.gradle/wrapper/"
+env:
+  global:
+  - secure: NpoF7wfGwHBOvGnwW/bMKTCLFrjW4F1bt3ib5gQCGjz5OGjfeTzEXhv7NtxxdgdnbBTBVfQThT2GR4QdReeHyjHi8svj9Ig/GUVHiIZwmUMXQfiBN3w/JYOKGA99LIu+0meyrHeuDbDr04JAZjCSvgFewTaEGPUodIXycsUw3x4YqQ39S3iRb6CY9FlNZYw/ue71Rrx11uqvMpOFJQnAcEa4F76XKnKLhlo/FGbr0wHmNPtHw60mnI+LnqJYOzjodugvfONxtg/CXTrGvh0qUnQprfTD+tt7ARGGnkHKuzFlVdu5DhyDTwpVSVbHynZ52AbV+qyGUlXp6BjcIsBmC5z7dM38c1rwXvjcsRIHj9NBTen49rwCj5Quj4sqA874qRKxw1o7u3LBuPqsdJo/P5WGiV/CWyr1qecb8rwCdGa9ySgaGcTKNdtB9WZk6/rXQLhrtd/XwoOHp4C5SGAPOV5diFLJnTIMyVa/QnTpKw5YAhcM5epBiEWHqFfCG6Q5fLY5x4Ouz//KxeGv78Xxf0d3G09RopKUyyi8s3MUeIHoJw0hTMCm63D59ZZZaF1hGINXQZTSP934QyfPyPVsGJ8kyNcPz1PAHltM2BCWzPSBGXMWBEZ6vP35LR/btbOz3Pd4v7//qBljJAgR0FvEl1O8kk62gEMTGBx+tCsV9A0=
+  - secure: k3VKugJoAw73baetonj5FTWRgzxWxGUZP6pzJipzjXofyU6gj3ZdG0TgnMuvb7u/pNuWLP+FpJKnolKC8YtJdl1Z3SB5tVmpvc4I6MrEA3aPn8IEIiRERKrEpoIHlUyBk79nxzu/uXQgaDhObsgpLibEopHMjfwE214Dc8e+GoCtze4/GKe7K6WB9fha4zuy6Ta/BVHQZ1Rkx4rCy5r9HcHDTD0CJYTM23/dwAA8z/v4OuylsR2MK4fP1D1r//usVUyRLJ8ASpvUkUOt/hco6u0kqrWl/9P54H4cuTjGA87eOGqdw6gXbTMcEQG49gzTjk/Yx26rA4dqnfqy3cl9+J6ttqORcJyNzmDijMLAdesySaD7WjmentxhL1xY/QHoO4h5KlY3lNis88bbE+zmVJpva1TsW2o7jIrEUqGB0hm8y7MAcifyiZAfbXpcHFFE3ijRtEIsSXKVHgFEZJCYvprt/jcQBNMj9mr9da9LzrCYGvZzjNQfPLjDSFOWf5vDDZct+1iNp/pcXUj47GJLbw+Fl7YOgnfp5vaWSm9zDG/WKcDeg5KIigVxCXdnOh0LhzExvcbr/RklwxquIWbmKv1LgF+Qx6KAXxWShU3C5MhV6pL0gUV6CsxP6h8ICG2jIGkFoPjW/6BwEw79A/EprPa5DljjOYELoYkGWh6RuNs=
+deploy:
+  provider: releases
+  api_key:
+    secure: VPgs2g3AryHvWEsDp4dODjVGZVaS9qH2x3NB5GUvWRAUV2ylWgT44xCtSzo3jvHK/AHyf6YaStUIdZq5nogArPkg3uO1sp669H1d0LmQ/18rwlNwLBDn0mHiiR27GhJe70LI/X2MrRb66o8dyj5Scmg/yWMiXS7cV2vVN9d7CfKebsJkEVbwqQojZ2kLiww64USGJix51rJqJaDKWE9/YjlAmGcWMEDahe3fQg0ctBnpdKeis1TOkJUddd2br4s06SeKaHmahcUkP1Y3pX2vgNzeGtEWDVbbIHNombmSeXektJGUwfi5Ww/p1XULDZUQ4ObKSM+4EYeRqAHZCq38qXglTQDNZk3YDiclgyPx2XotOKvbVaG33p4ztkMupvEC+EMG487RvOFrVTfKVFvelNlFoGMI+NtD9/Eevr0JgtOi3dgrLYK2zz0yMs/YMx+yUj5WnTAKyrNsF/J6OopHSiprgT+F1Hbov3n8rWxBkgErjmI8ZmH45OTY869tV7mVkedHmKoUIe4DHe5D9aAReQLAhVCZfgkprICTkXro4oxHmXc2nnR2m+8hUNeXSTfLvgTxGTutqE1tfYp/k8YjrAsXuttDJb4reHE/I6TWSYZOMAFf9+zD9hft05oAMaqyauXt9v/Hm1MV8B98cEmOvNrGFXpD+Yir0Zv/ZXTq0HU=
+  file_glob: true
+  file: build/libs/*
+  on:
+    repo: Dwolla/rsocket-consul-java
+    tags: true
+after_deploy:
+  - "./gradlew bintrayUpload"
