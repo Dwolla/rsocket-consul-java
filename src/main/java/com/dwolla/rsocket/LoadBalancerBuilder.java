@@ -25,7 +25,8 @@ public class LoadBalancerBuilder {
             config().setRequestTimeout(requestTimeout).setReadTimeout(requestTimeout).build());
 
     HealthPoller poller = new HealthPoller(new AsyncHttpClientImpl(asyncHttpClient), consulHost);
-    ConsulRSocketLoadBalancerFactory factory = new ConsulRSocketLoadBalancerFactory(poller);
+    ConsulRSocketLoadBalancerFactory factory =
+        new ConsulRSocketLoadBalancerFactory(poller, new AddressRSocketSupplierFactory());
 
     return factory.create(service);
   }
