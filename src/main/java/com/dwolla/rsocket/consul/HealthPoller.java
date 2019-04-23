@@ -1,13 +1,9 @@
-package com.dwolla.rsocket;
+package com.dwolla.rsocket.consul;
 
-import com.dwolla.rsocket.consul.HealthDto;
-import com.dwolla.rsocket.consul.HttpClient;
-import com.dwolla.rsocket.consul.SimpleResponse;
+import com.dwolla.rsocket.Address;
 import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -20,26 +16,24 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class ConsulHealthStream implements HealthStream {
-  private Logger logger = LoggerFactory.getLogger(getClass());
+public class HealthPoller {
+  private final int StartingIndex = 0;
 
   private final String healthUrl = "%s/v1/health/service/%s?passing=true&index=%d&wait=1m";
   private final Gson gson = new Gson();
   private final HttpClient client;
   private String consulHost;
 
-  public ConsulHealthStream(final HttpClient client, final String consulHost) {
+  protected Set<Address> lastResponse;
+  protected Consumer<Set<Address>> listener = c -> {};
+  private Logger logger = LoggerFactory.getLogger(getClass());
+
+  public HealthPoller(HttpClient client, String consulHost) {
     this.client = client;
     this.consulHost = consulHost;
   }
 
-  @Override
-  public Flux<Set<Address>> getHealthyInstancesOf(final String service) {
-    return Flux.create(c -> startLoop(c::next, service), FluxSink.OverflowStrategy.LATEST);
-  }
-
-  private void startLoop(final Consumer<Set<Address>> callback, final String serviceName) {
-    logger.debug("Starting health check loop for service={}", serviceName);
+  public void start(String serviceName) {
     Recursive<Function<Integer, CompletableFuture<Integer>>> r = new Recursive<>();
     r.func =
         index ->
@@ -49,8 +43,10 @@ public class ConsulHealthStream implements HealthStream {
                     res -> {
                       int nextIdx = getNextIdxFrom(res);
 
-                      if (nextIdx > index) callback.accept(getAddressesFrom(res.getBody()));
-                      else logger.debug("Received an index: {} that was less than the prior index: {}.", nextIdx, index);
+                      if (nextIdx > index) {
+                        lastResponse = getAddressesFrom(res.getBody());
+                        listener.accept(lastResponse);
+                      }
 
                       return nextIdx;
                     })
@@ -58,13 +54,21 @@ public class ConsulHealthStream implements HealthStream {
                     (nextId, th) -> {
                       if (th != null) {
                         logger.warn("Got an exception while long polling Consul.", th);
-                        Mono.delay(Duration.ofSeconds(5)).subscribe(i -> r.func.apply(0));
+                        Mono.delay(Duration.ofSeconds(5))
+                            .subscribe(i -> r.func.apply(StartingIndex));
                       } else {
                         r.func.apply(nextId);
                       }
                     });
 
-    r.func.apply(0);
+    r.func.apply(StartingIndex);
+  }
+
+  public void setListener(Consumer<Set<Address>> listener) {
+    this.listener = listener;
+    if (lastResponse != null) {
+      listener.accept(lastResponse);
+    }
   }
 
   private Integer getNextIdxFrom(SimpleResponse response) {
@@ -73,7 +77,7 @@ public class ConsulHealthStream implements HealthStream {
         .findFirst()
         .map(Map.Entry::getValue)
         .map(Integer::parseInt)
-        .orElse(0);
+        .orElse(StartingIndex);
   }
 
   private Set<Address> getAddressesFrom(String body) {
@@ -81,8 +85,8 @@ public class ConsulHealthStream implements HealthStream {
         .map(hr -> new Address(hr.getService().getAddress(), hr.getService().getPort()))
         .collect(Collectors.toCollection(HashSet::new));
   }
-}
 
-class Recursive<I> {
-  I func;
+  private class Recursive<I> {
+    I func;
+  }
 }
