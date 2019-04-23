@@ -22,7 +22,6 @@ dependencies {
     
     testImplementation 'org.junit.jupiter:junit-jupiter:5.4.2'
     testImplementation 'org.mockito:mockito-core:2.27.0'
-    testImplementation 'io.projectreactor:reactor-test:3.2.6.RELEASE'
 }
 
 test {

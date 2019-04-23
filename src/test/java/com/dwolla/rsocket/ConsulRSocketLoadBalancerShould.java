@@ -4,7 +4,6 @@ import com.dwolla.rsocket.consul.HealthPoller;
 import com.dwolla.rsocket.consul.HttpClient;
 import io.rsocket.AbstractRSocket;
 import io.rsocket.Payload;
-import io.rsocket.client.LoadBalancedRSocketMono;
 import io.rsocket.client.filter.RSocketSupplier;
 import io.rsocket.util.DefaultPayload;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,36 +13,32 @@ import reactor.core.publisher.Mono;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ConsulRSocketLoadBalancerShould {
   private Address ADDRESS = new Address("host1", 1234);
   private Set<Address> ADDRESSES = new HashSet<>(Collections.singletonList(ADDRESS));
 
   private FakePoller poller;
+  private AddressRSocketSupplierFactory supplierFactory;
   private ConsulRSocketLoadBalancerFactory loadBalancerFactory;
   private RSocketSupplier supplier = new RSocketSupplier(() -> Mono.just(new TestRSocket()));
-
-  private Function<Address, RSocketSupplier> builder =
-      add -> {
-        if (add.equals(ADDRESS)) {
-          return supplier;
-        } else {
-          return null;
-        }
-      };
 
   @BeforeEach
   void setup() {
     poller = new FakePoller(null, null, ADDRESSES);
-    loadBalancerFactory = new ConsulRSocketLoadBalancerFactoryTest(poller, builder);
+    supplierFactory = mock(AddressRSocketSupplierFactory.class);
+    loadBalancerFactory = new ConsulRSocketLoadBalancerFactory(poller, supplierFactory);
   }
 
   @Test
   void buildSuppliersFromAddresses() {
     String serviceName = "foo";
+
+    when(supplierFactory.create(ADDRESS)).thenReturn(supplier);
 
     Mono<Payload> response =
         loadBalancerFactory
@@ -53,14 +48,6 @@ class ConsulRSocketLoadBalancerShould {
 
     assertEquals(serviceName, poller.serviceName);
     assertEquals("success", response.block().getDataUtf8());
-  }
-}
-
-class ConsulRSocketLoadBalancerFactoryTest extends ConsulRSocketLoadBalancerFactory {
-  ConsulRSocketLoadBalancerFactoryTest(
-      HealthPoller poller, Function<Address, RSocketSupplier> rsocketBuilder) {
-    super(poller);
-    this.rsocketBuilder = rsocketBuilder;
   }
 }
 
