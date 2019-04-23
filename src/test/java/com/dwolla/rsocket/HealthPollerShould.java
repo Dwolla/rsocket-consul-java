@@ -1,31 +1,33 @@
 package com.dwolla.rsocket;
 
+import com.dwolla.rsocket.consul.HealthPoller;
 import com.dwolla.rsocket.consul.HttpClient;
 import com.dwolla.rsocket.consul.SimpleResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Flux;
 
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class ConsulHealthStreamShould {
+class HealthPollerShould {
   private final String CONSUL_HOST = "https://consul-host.location";
   private final String SERVICE_NAME = "some-name";
   private final Address host1 = new Address("host1", 1234);
   private final Address host2 = new Address("host2", 5678);
-  private ConsulHealthStream healthStream;
+  private HealthPoller poller;
   private HttpClient client;
+  private final String firstIndex = "34234";
+  private Map<String, String> firstHeaders = Collections.singletonMap("X-Consul-Index", firstIndex);
 
   @BeforeEach
   void setup() {
     client = mock(HttpClient.class);
-    healthStream = new ConsulHealthStream(client, CONSUL_HOST);
+    poller = new HealthPoller(client, CONSUL_HOST);
   }
 
   private final String INSTANCE_1 = "{`Service`:{`Address`:`host1`,`Port`:1234}}".replace('`', '"');
@@ -33,20 +35,42 @@ class ConsulHealthStreamShould {
   private final String JSON_RES = ("[" + INSTANCE_1 + "," + INSTANCE_2 + "]");
 
   @Test
-  void createAFluxThatIsFedByUpdatesFromConsul() {
-    Map<String, String> headers = Collections.singletonMap("X-Consul-Index", "34234");
-    SimpleResponse simpleResponse =
-        new SimpleResponse(JSON_RES, new ArrayList<>(headers.entrySet()));
+  void createAFluxThatIsFedByUpdatesFromConsul() throws ExecutionException, InterruptedException {
+    SimpleResponse res = new SimpleResponse(JSON_RES, new ArrayList<>(firstHeaders.entrySet()));
     CompletableFuture<SimpleResponse> future = new CompletableFuture<>();
+    CompletableFuture<Set<Address>> result = new CompletableFuture<>();
 
     when(client.get(
             CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m"))
         .thenReturn(future);
 
-    Flux<Set<Address>> service = healthStream.getHealthyInstancesOf(SERVICE_NAME);
-    future.complete(simpleResponse);
+    poller.setListener(result::complete);
+    poller.start(SERVICE_NAME);
 
-    Set<Address> addresses = service.blockFirst();
+    future.complete(res);
+
+    Set<Address> addresses = result.get();
+
+    assertNotNull(addresses);
+    assertTrue(addresses.contains(host1));
+    assertTrue(addresses.contains(host2));
+  }
+
+  @Test
+  void notifyTheListenerOfTheMostRecentResponseIfAlreadyResolved() throws ExecutionException, InterruptedException {
+    SimpleResponse res = new SimpleResponse(JSON_RES, new ArrayList<>(firstHeaders.entrySet()));
+    CompletableFuture<SimpleResponse> future = new CompletableFuture<>();
+    CompletableFuture<Set<Address>> result = new CompletableFuture<>();
+
+    when(client.get(
+            CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m"))
+        .thenReturn(future);
+
+    poller.start(SERVICE_NAME);
+    future.complete(res);
+    poller.setListener(result::complete);
+
+    Set<Address> addresses = result.get();
 
     assertNotNull(addresses);
     assertTrue(addresses.contains(host1));
@@ -55,8 +79,6 @@ class ConsulHealthStreamShould {
 
   @Test
   void continueInitiatingRequests() {
-    String nextIndex = "34234";
-    Map<String, String> firstHeaders = Collections.singletonMap("X-Consul-Index", nextIndex);
     Map<String, String> secondHeaders = Collections.singletonMap("X-Consul-Index", "98765");
     SimpleResponse firstResponse =
         new SimpleResponse("[" + INSTANCE_1 + "]", new ArrayList<>(firstHeaders.entrySet()));
@@ -65,6 +87,7 @@ class ConsulHealthStreamShould {
 
     CompletableFuture<SimpleResponse> firstFuture = new CompletableFuture<>();
     CompletableFuture<SimpleResponse> secondFuture = new CompletableFuture<>();
+    List<Set<Address>> results = new ArrayList<>();
 
     when(client.get(
             CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m"))
@@ -74,25 +97,23 @@ class ConsulHealthStreamShould {
                 + "/v1/health/service/"
                 + SERVICE_NAME
                 + "?passing=true&index="
-                + nextIndex
+                + firstIndex
                 + "&wait=1m"))
         .thenReturn(secondFuture);
 
-    Flux<Set<Address>> service = healthStream.getHealthyInstancesOf(SERVICE_NAME);
+    poller.setListener(results::add);
+    poller.start(SERVICE_NAME);
+
     firstFuture.complete(firstResponse);
     secondFuture.complete(secondResponse);
 
-    List<Set<Address>> sets = service.buffer(2).blockFirst();
-
-    assertNotNull(sets);
-    assertTrue(sets.get(0).contains(host1));
-    assertTrue(sets.get(1).contains(host2));
+    assertEquals(2, results.size());
+    assertTrue(results.get(0).contains(host1));
+    assertTrue(results.get(1).contains(host2));
   }
 
   @Test
   void notNotifyIfTheIndexIsLowerThanThePreviousIndex() {
-    String nextIndex = "34234";
-    Map<String, String> firstHeaders = Collections.singletonMap("X-Consul-Index", nextIndex);
     Map<String, String> secondHeaders = Collections.singletonMap("X-Consul-Index", "34233");
     SimpleResponse firstResponse =
         new SimpleResponse("[" + INSTANCE_1 + "]", new ArrayList<>(firstHeaders.entrySet()));
@@ -101,6 +122,7 @@ class ConsulHealthStreamShould {
 
     CompletableFuture<SimpleResponse> firstFuture = new CompletableFuture<>();
     CompletableFuture<SimpleResponse> secondFuture = new CompletableFuture<>();
+    List<Set<Address>> results = new ArrayList<>();
 
     when(client.get(
             CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m"))
@@ -110,40 +132,40 @@ class ConsulHealthStreamShould {
                 + "/v1/health/service/"
                 + SERVICE_NAME
                 + "?passing=true&index="
-                + nextIndex
+                + firstIndex
                 + "&wait=1m"))
         .thenReturn(secondFuture);
 
-    Flux<Set<Address>> service = healthStream.getHealthyInstancesOf(SERVICE_NAME);
+    poller.start(SERVICE_NAME);
+    poller.setListener(results::add);
     firstFuture.complete(firstResponse);
     secondFuture.complete(secondResponse);
 
-    List<Set<Address>> sets = service.bufferTimeout(2, Duration.ofSeconds(1)).blockFirst();
-
-    assertNotNull(sets);
-    assertEquals(1, sets.size());
-    assertTrue(sets.get(0).contains(host1));
+    assertEquals(1, results.size());
+    assertTrue(results.get(0).contains(host1));
   }
 
   @Test
-  void startOverAtIndexZeroAfterFiveSecondsIfAnExceptionOccurs() {
-    Map<String, String> headers = Collections.singletonMap("X-Consul-Index", "34234");
+  void startOverAtIndexZeroAfterFiveSecondsIfAnExceptionOccurs()
+      throws ExecutionException, InterruptedException {
     SimpleResponse simpleResponse =
-            new SimpleResponse(JSON_RES, new ArrayList<>(headers.entrySet()));
+        new SimpleResponse(JSON_RES, new ArrayList<>(firstHeaders.entrySet()));
     CompletableFuture<SimpleResponse> future = new CompletableFuture<>();
     CompletableFuture<SimpleResponse> failedFuture = new CompletableFuture<>();
+    CompletableFuture<Set<Address>> result = new CompletableFuture<>();
 
     when(client.get(
             CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m"))
-            .thenReturn(failedFuture)
-            .thenReturn(future);
+        .thenReturn(failedFuture)
+        .thenReturn(future);
 
-    Flux<Set<Address>> service = healthStream.getHealthyInstancesOf(SERVICE_NAME);
+    poller.start(SERVICE_NAME);
+    poller.setListener(result::complete);
 
     failedFuture.completeExceptionally(new RuntimeException("Something happened"));
     future.complete(simpleResponse);
 
-    Set<Address> addresses = service.blockFirst();
+    Set<Address> addresses = result.get();
 
     assertNotNull(addresses);
     assertTrue(addresses.contains(host1));

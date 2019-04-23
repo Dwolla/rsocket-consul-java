@@ -1,6 +1,7 @@
 package com.dwolla.rsocket;
 
 import com.dwolla.rsocket.consul.AsyncHttpClientImpl;
+import com.dwolla.rsocket.consul.HealthPoller;
 import io.rsocket.client.LoadBalancedRSocketMono;
 import org.asynchttpclient.AsyncHttpClient;
 
@@ -23,9 +24,8 @@ public class LoadBalancerBuilder {
         asyncHttpClient(
             config().setRequestTimeout(requestTimeout).setReadTimeout(requestTimeout).build());
 
-    ConsulRSocketLoadBalancerFactory factory =
-        new ConsulRSocketLoadBalancerFactory(
-            new ConsulHealthStream(new AsyncHttpClientImpl(asyncHttpClient), consulHost));
+    HealthPoller poller = new HealthPoller(new AsyncHttpClientImpl(asyncHttpClient), consulHost);
+    ConsulRSocketLoadBalancerFactory factory = new ConsulRSocketLoadBalancerFactory(poller);
 
     return factory.create(service);
   }

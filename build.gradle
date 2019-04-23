@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.dwolla'
-version = '0.0.2'
+version = '0.0.3'
 
 repositories {
     jcenter()
@@ -22,6 +22,14 @@ dependencies {
     
     testImplementation 'org.junit.jupiter:junit-jupiter:5.4.2'
     testImplementation 'org.mockito:mockito-core:2.27.0'
+    testImplementation 'io.projectreactor:reactor-test:3.2.6.RELEASE'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
 
 task sourcesJar(type: Jar) {
