@@ -12,9 +12,9 @@ repositories {
 }
 
 dependencies {
-    api 'io.rsocket:rsocket-core:0.12.2-RC2'
-    api 'io.rsocket:rsocket-load-balancer:0.12.2-RC2'
-    api 'io.rsocket:rsocket-transport-netty:0.12.2-RC2'
+    api 'io.rsocket:rsocket-core:0.12.2-RC3'
+    api 'io.rsocket:rsocket-load-balancer:0.12.2-RC3'
+    api 'io.rsocket:rsocket-transport-netty:0.12.2-RC3'
 
     implementation 'org.asynchttpclient:async-http-client:2.8.1'
     implementation 'com.google.code.gson:gson:2.8.5'
