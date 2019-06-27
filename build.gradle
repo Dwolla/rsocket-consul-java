@@ -11,10 +11,14 @@ repositories {
     jcenter()
 }
 
+ext {
+    rsocketVersion = "1.0.0-RC1"
+}
+
 dependencies {
-    api 'io.rsocket:rsocket-core:0.12.2-RC3'
-    api 'io.rsocket:rsocket-load-balancer:0.12.2-RC3'
-    api 'io.rsocket:rsocket-transport-netty:0.12.2-RC3'
+    api group: 'io.rsocket', name: 'rsocket-core', version: rsocketVersion
+    api group: 'io.rsocket', name: 'rsocket-load-balancer', version: rsocketVersion
+    api group: 'io.rsocket', name: 'rsocket-transport-netty', version: rsocketVersion
 
     implementation 'org.asynchttpclient:async-http-client:2.8.1'
     implementation 'com.google.code.gson:gson:2.8.5'
