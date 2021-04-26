@@ -5,10 +5,13 @@ import com.dwolla.rsocket.consul.HttpClient;
 import com.dwolla.rsocket.consul.SimpleResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -36,58 +39,53 @@ class HealthPollerShould {
 
   @Test
   void createAFluxThatIsFedByUpdatesFromConsul() throws ExecutionException, InterruptedException {
-    SimpleResponse res = new SimpleResponse(JSON_RES, new ArrayList<>(firstHeaders.entrySet()));
-    CompletableFuture<SimpleResponse> future = new CompletableFuture<>();
-    CompletableFuture<Set<Address>> result = new CompletableFuture<>();
+    final SimpleResponse res = new SimpleResponse(JSON_RES, new ArrayList<>(firstHeaders.entrySet()));
+    final CompletableFuture<SimpleResponse> future = new CompletableFuture<>();
 
     when(client.get(
             CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m"))
         .thenReturn(future);
 
-    poller.setListener(result::complete);
-    poller.start(SERVICE_NAME);
+    final Flux<Set<Address>> addresses = poller.start(SERVICE_NAME);
 
     future.complete(res);
 
-    Set<Address> addresses = result.get();
+    final Set<Address> output = addresses.blockFirst(Duration.ofSeconds(2));
 
-    assertNotNull(addresses);
-    assertTrue(addresses.contains(host1));
-    assertTrue(addresses.contains(host2));
+    assertNotNull(output);
+    assertTrue(output.contains(host1));
+    assertTrue(output.contains(host2));
   }
 
   @Test
   void notifyTheListenerOfTheMostRecentResponseIfAlreadyResolved() throws ExecutionException, InterruptedException {
-    SimpleResponse res = new SimpleResponse(JSON_RES, new ArrayList<>(firstHeaders.entrySet()));
-    CompletableFuture<SimpleResponse> future = new CompletableFuture<>();
-    CompletableFuture<Set<Address>> result = new CompletableFuture<>();
+    final SimpleResponse res = new SimpleResponse(JSON_RES, new ArrayList<>(firstHeaders.entrySet()));
+    final CompletableFuture<SimpleResponse> future = new CompletableFuture<>();
 
     when(client.get(
             CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m"))
         .thenReturn(future);
 
-    poller.start(SERVICE_NAME);
+    final Flux<Set<Address>> addresses = poller.start(SERVICE_NAME);
     future.complete(res);
-    poller.setListener(result::complete);
 
-    Set<Address> addresses = result.get();
+    final Set<Address> output = addresses.blockFirst(Duration.ofSeconds(2));
 
-    assertNotNull(addresses);
-    assertTrue(addresses.contains(host1));
-    assertTrue(addresses.contains(host2));
+    assertNotNull(output);
+    assertTrue(output.contains(host1));
+    assertTrue(output.contains(host2));
   }
 
   @Test
   void continueInitiatingRequests() {
-    Map<String, String> secondHeaders = Collections.singletonMap("X-Consul-Index", "98765");
-    SimpleResponse firstResponse =
+    final Map<String, String> secondHeaders = Collections.singletonMap("X-Consul-Index", "98765");
+    final SimpleResponse firstResponse =
         new SimpleResponse("[" + INSTANCE_1 + "]", new ArrayList<>(firstHeaders.entrySet()));
-    SimpleResponse secondResponse =
+    final SimpleResponse secondResponse =
         new SimpleResponse("[" + INSTANCE_2 + "]", new ArrayList<>(secondHeaders.entrySet()));
 
-    CompletableFuture<SimpleResponse> firstFuture = new CompletableFuture<>();
-    CompletableFuture<SimpleResponse> secondFuture = new CompletableFuture<>();
-    List<Set<Address>> results = new ArrayList<>();
+    final CompletableFuture<SimpleResponse> firstFuture = new CompletableFuture<>();
+    final CompletableFuture<SimpleResponse> secondFuture = new CompletableFuture<>();
 
     when(client.get(
             CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m"))
@@ -101,28 +99,29 @@ class HealthPollerShould {
                 + "&wait=1m"))
         .thenReturn(secondFuture);
 
-    poller.setListener(results::add);
-    poller.start(SERVICE_NAME);
+    final Flux<Set<Address>> addresses = poller.start(SERVICE_NAME);
 
     firstFuture.complete(firstResponse);
     secondFuture.complete(secondResponse);
 
-    assertEquals(2, results.size());
-    assertTrue(results.get(0).contains(host1));
-    assertTrue(results.get(1).contains(host2));
+    final List<Set<Address>> output = addresses.take(2).collect(Collectors.toList()).block();
+
+    assertNotNull(output);
+    assertEquals(2, output.size());
+    assertTrue(output.get(0).contains(host1));
+    assertTrue(output.get(1).contains(host2));
   }
 
   @Test
   void notNotifyIfTheIndexIsLowerThanThePreviousIndex() {
-    Map<String, String> secondHeaders = Collections.singletonMap("X-Consul-Index", "34233");
-    SimpleResponse firstResponse =
+    final Map<String, String> secondHeaders = Collections.singletonMap("X-Consul-Index", "34233");
+    final SimpleResponse firstResponse =
         new SimpleResponse("[" + INSTANCE_1 + "]", new ArrayList<>(firstHeaders.entrySet()));
-    SimpleResponse secondResponse =
+    final SimpleResponse secondResponse =
         new SimpleResponse("[" + INSTANCE_2 + "]", new ArrayList<>(secondHeaders.entrySet()));
 
-    CompletableFuture<SimpleResponse> firstFuture = new CompletableFuture<>();
-    CompletableFuture<SimpleResponse> secondFuture = new CompletableFuture<>();
-    List<Set<Address>> results = new ArrayList<>();
+    final CompletableFuture<SimpleResponse> firstFuture = new CompletableFuture<>();
+    final CompletableFuture<SimpleResponse> secondFuture = new CompletableFuture<>();
 
     when(client.get(
             CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m"))
@@ -136,39 +135,40 @@ class HealthPollerShould {
                 + "&wait=1m"))
         .thenReturn(secondFuture);
 
-    poller.start(SERVICE_NAME);
-    poller.setListener(results::add);
+    final Flux<Set<Address>> addresses = poller.start(SERVICE_NAME);
+
     firstFuture.complete(firstResponse);
     secondFuture.complete(secondResponse);
 
-    assertEquals(1, results.size());
-    assertTrue(results.get(0).contains(host1));
+    final List<Set<Address>> output = addresses.take(Duration.ofSeconds(1)).collect(Collectors.toList()).block();
+
+    assertNotNull(output);
+    assertEquals(1, output.size());
+    assertTrue(output.get(0).contains(host1));
   }
 
   @Test
-  void startOverAtIndexZeroAfterFiveSecondsIfAnExceptionOccurs()
-      throws ExecutionException, InterruptedException {
-    SimpleResponse simpleResponse =
+  void startOverAtIndexZeroAfterFiveSecondsIfAnExceptionOccurs() throws ExecutionException, InterruptedException {
+    final SimpleResponse simpleResponse =
         new SimpleResponse(JSON_RES, new ArrayList<>(firstHeaders.entrySet()));
-    CompletableFuture<SimpleResponse> future = new CompletableFuture<>();
-    CompletableFuture<SimpleResponse> failedFuture = new CompletableFuture<>();
-    CompletableFuture<Set<Address>> result = new CompletableFuture<>();
+    final CompletableFuture<SimpleResponse> future = new CompletableFuture<>();
+    final CompletableFuture<SimpleResponse> failedFuture = new CompletableFuture<>();
 
     when(client.get(
             CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m"))
         .thenReturn(failedFuture)
         .thenReturn(future);
 
-    poller.start(SERVICE_NAME);
-    poller.setListener(result::complete);
+    final Flux<Set<Address>> addresses = poller.start(SERVICE_NAME);
 
     failedFuture.completeExceptionally(new RuntimeException("Something happened"));
     future.complete(simpleResponse);
 
-    Set<Address> addresses = result.get();
+    final Set<Address> output =
+            addresses.take(Duration.ofSeconds(10)).next().block(Duration.ofSeconds(10));
 
-    assertNotNull(addresses);
-    assertTrue(addresses.contains(host1));
-    assertTrue(addresses.contains(host2));
+    assertNotNull(output);
+    assertTrue(output.contains(host1));
+    assertTrue(output.contains(host2));
   }
 }

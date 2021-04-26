@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 public class SimpleResponse {
-  private String body;
-  private List<Map.Entry<String, String>> headers;
+  private final String body;
+  private final List<Map.Entry<String, String>> headers;
 
   public SimpleResponse(final String body, final List<Map.Entry<String, String>> headers) {
     this.body = body;
