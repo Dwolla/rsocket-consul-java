@@ -2,32 +2,52 @@ package com.dwolla.rsocket;
 
 import com.dwolla.rsocket.consul.AsyncHttpClientImpl;
 import com.dwolla.rsocket.consul.HealthPoller;
-import io.rsocket.client.LoadBalancedRSocketMono;
-import org.asynchttpclient.AsyncHttpClient;
+import com.dwolla.rsocket.consul.HttpClient;
+import io.rsocket.loadbalance.LoadbalanceRSocketClient;
+import io.rsocket.loadbalance.LoadbalanceTarget;
+import io.rsocket.transport.netty.client.TcpClientTransport;
+import reactor.core.publisher.Flux;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.asynchttpclient.Dsl.asyncHttpClient;
 import static org.asynchttpclient.Dsl.config;
 
 public class LoadBalancerBuilder {
   private String consulHost = "http://localhost:8500";
-  private int requestTimeout = (int) Duration.ofSeconds(90).toMillis();
+  private static final int requestTimeout = (int) Duration.ofSeconds(90).toMillis();
 
-  public LoadBalancerBuilder withConsul(String consul) {
+  private final HttpClient httpClient;
+
+  public LoadBalancerBuilder(final HttpClient httpClient) {
+    this.httpClient = httpClient;
+  }
+
+  public LoadBalancerBuilder() {
+    this(new AsyncHttpClientImpl(asyncHttpClient(config().setRequestTimeout(requestTimeout).setReadTimeout(requestTimeout).build())));
+  }
+
+  private static List<LoadbalanceTarget> addressesToLoadbalanceTargets(Set<Address> addresses) {
+    return addresses.stream()
+            .map(address ->
+                    LoadbalanceTarget.from(address.toString(), TcpClientTransport.create(address.getHost(), address.getPort())))
+            .collect(Collectors.toList());
+  }
+
+  public LoadBalancerBuilder withConsul(final String consul) {
     this.consulHost = consul;
     return this;
   }
 
-  public LoadBalancedRSocketMono build(String service) {
-    AsyncHttpClient asyncHttpClient =
-        asyncHttpClient(
-            config().setRequestTimeout(requestTimeout).setReadTimeout(requestTimeout).build());
-
-    HealthPoller poller = new HealthPoller(new AsyncHttpClientImpl(asyncHttpClient), consulHost);
-    ConsulRSocketLoadBalancerFactory factory =
-        new ConsulRSocketLoadBalancerFactory(poller, new AddressRSocketSupplierFactory());
-
-    return factory.create(service);
+  public LoadbalanceRSocketClient build(final String service) {
+    final HealthPoller poller = new HealthPoller(httpClient, consulHost);
+    final Flux<List<LoadbalanceTarget>> targets =
+            poller.start(service)
+                    .map(LoadBalancerBuilder::addressesToLoadbalanceTargets
+                    );
+    return LoadbalanceRSocketClient.builder(targets).build();
   }
 }

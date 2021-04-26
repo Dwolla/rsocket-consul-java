@@ -31,4 +31,9 @@ public class Address {
   public int hashCode() {
     return Objects.hash(host, port);
   }
+
+  @Override
+  public String toString() {
+    return String.format("%s:%d", host, port);
+  }
 }
