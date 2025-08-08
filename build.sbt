@@ -36,18 +36,18 @@ lazy val `rsocket-consul-java` = (project in file("."))
   .settings(
     Test / fork := true,  // otherwise we get java.net.SocketException: maximum number of DatagramSockets reached
     libraryDependencies ++= {
-      val rsocketVersion = "1.1.0"
+      val rsocketVersion = "1.1.4"
       Seq(
         "io.rsocket" % "rsocket-core" % rsocketVersion,
         "io.rsocket" % "rsocket-load-balancer" % rsocketVersion,
         "io.rsocket" % "rsocket-transport-netty" % rsocketVersion,
-        "org.asynchttpclient" % "async-http-client" % "2.8.1",
-        "com.google.code.gson" % "gson" % "2.8.5",
-        "org.slf4j" % "slf4j-api" % "1.7.26",
-        "org.junit.jupiter" % "junit-jupiter" % "5.4.2" % Test,
+        "org.asynchttpclient" % "async-http-client" % "2.12.3",
+        "com.google.code.gson" % "gson" % "2.11.0",
+        "org.slf4j" % "slf4j-api" % "2.0.13",
+        "org.junit.jupiter" % "junit-jupiter" % "5.13.4" % Test,
         "net.aichler" % "jupiter-interface" % JupiterKeys.jupiterVersion.value % Test,
-        "org.mockito" % "mockito-core" % "2.27.0" % Test,
-        "org.slf4j" % "slf4j-nop" % "1.7.30" % Test,
+        "org.mockito" % "mockito-core" % "5.18.0" % Test,
+        "org.slf4j" % "slf4j-nop" % "2.0.17" % Test,
       )
     },
   )

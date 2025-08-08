@@ -19,4 +19,9 @@ public class AsyncHttpClientImpl implements HttpClient {
         .toCompletableFuture()
         .thenApply(r -> new SimpleResponse(r.getResponseBody(), r.getHeaders().entries()));
   }
+
+  @Override
+  public void close() throws java.io.IOException {
+    client.close();
+  }
 }

@@ -15,8 +15,9 @@ import java.util.stream.Collectors;
 
 import static org.asynchttpclient.Dsl.asyncHttpClient;
 import static org.asynchttpclient.Dsl.config;
+import java.io.IOException;
 
-public class LoadBalancerBuilder {
+public class LoadBalancerBuilder implements AutoCloseable {
   private String consulHost = "http://localhost:8500";
   private static final int requestTimeout = (int) Duration.ofSeconds(90).toMillis();
 
@@ -49,5 +50,10 @@ public class LoadBalancerBuilder {
                     .map(LoadBalancerBuilder::addressesToLoadbalanceTargets
                     );
     return LoadbalanceRSocketClient.builder(targets).build();
+  }
+
+  @Override
+  public void close() throws IOException {
+    httpClient.close();
   }
 }
