@@ -36,6 +36,8 @@ inThisBuild(List(
       )
     )
   ),
+
+  tlMimaPreviousVersions += "0.0.6",
 ))
 
 lazy val `rsocket-consul-java` = (project in file("."))
