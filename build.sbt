@@ -15,7 +15,13 @@ inThisBuild(List(
   autoScalaLibrary := false,
   crossPaths := false,
 
-  githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("11"), JavaSpec.temurin("17"), JavaSpec.temurin("21")),
+  tlBaseVersion := "0.0",
+  mergifyStewardConfig ~= { _.map {
+    _.withAuthor("dwolla-oss-scala-steward[bot]")
+      .withMergeMinors(true)
+  }},
+
+  githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"), JavaSpec.temurin("17"), JavaSpec.temurin("21")),
   githubWorkflowTargetTags ++= Seq("v*"),
   githubWorkflowPublishTargetBranches :=
     Seq(RefPredicate.StartsWith(Ref.Tag("v"))),
