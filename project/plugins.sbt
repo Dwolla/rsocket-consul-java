@@ -1,3 +1,3 @@
-addSbtPlugin("com.geirsson" % "sbt-ci-release" % "1.5.7")
-addSbtPlugin("com.codecommit" % "sbt-github-actions" % "0.10.1")
-addSbtPlugin("net.aichler" % "sbt-jupiter-interface" % "0.9.1")
+addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.9.3")
+addSbtPlugin("com.github.sbt" % "sbt-github-actions" % "0.24.0")
+addSbtPlugin("net.aichler" % "sbt-jupiter-interface" % "0.11.1")
