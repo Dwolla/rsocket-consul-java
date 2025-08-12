@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -16,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class HealthPoller {
+public class HealthPoller implements AutoCloseable {
   private final int StartingIndex = 0;
 
   private final String healthUrl = "%s/v1/health/service/%s?passing=true&index=%d&wait=1m";
@@ -78,6 +79,11 @@ public class HealthPoller {
     return Arrays.stream(gson.fromJson(body, HealthDto[].class))
         .map(hr -> new Address(hr.getService().getAddress(), hr.getService().getPort()))
         .collect(Collectors.toCollection(HashSet::new));
+  }
+
+  @Override
+  public void close() throws IOException {
+    this.client.close();
   }
 
   private static class Recursive<I> {
