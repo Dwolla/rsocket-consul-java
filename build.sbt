@@ -36,7 +36,7 @@ lazy val `rsocket-consul-java` = (project in file("."))
   .settings(
     Test / fork := true,  // otherwise we get java.net.SocketException: maximum number of DatagramSockets reached
     libraryDependencies ++= {
-      val rsocketVersion = "1.1.0"
+      val rsocketVersion = "1.1.5"
       Seq(
         "io.rsocket" % "rsocket-core" % rsocketVersion,
         "io.rsocket" % "rsocket-load-balancer" % rsocketVersion,
