@@ -23,7 +23,7 @@ import java.io.IOException;
 
 public class LoadBalancerBuilder {
   private String consulHost = "http://localhost:8500";
-  private static final int requestTimeout = (int) Duration.ofSeconds(90).toMillis();
+  private static final Duration requestTimeout = Duration.ofSeconds(90);
 
   private final HttpClient httpClient;
 
