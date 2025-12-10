@@ -53,7 +53,7 @@ lazy val `rsocket-consul-java` = (project in file("."))
         "org.asynchttpclient" % "async-http-client" % "2.12.4",
         "com.google.code.gson" % "gson" % "2.13.2",
         "org.slf4j" % "slf4j-api" % "2.0.17",
-        "org.junit.jupiter" % "junit-jupiter" % "5.14.1" % Test,
+        "org.junit.jupiter" % "junit-jupiter" % "6.0.1" % Test,
         "org.junit.platform" % "junit-platform-engine" % "1.14.1" % Test,
         "org.junit.platform" % "junit-platform-launcher" % "1.14.1" % Test,
         "net.aichler" % "jupiter-interface" % JupiterKeys.jupiterVersion.value % Test,
