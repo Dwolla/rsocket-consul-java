@@ -50,7 +50,7 @@ lazy val `rsocket-consul-java` = (project in file("."))
         "io.rsocket" % "rsocket-core" % rsocketVersion,
         "io.rsocket" % "rsocket-load-balancer" % rsocketVersion,
         "io.rsocket" % "rsocket-transport-netty" % rsocketVersion,
-        "org.asynchttpclient" % "async-http-client" % "2.14.5",
+        "org.asynchttpclient" % "async-http-client" % "3.0.9",
         "com.google.code.gson" % "gson" % "2.14.0",
         "org.slf4j" % "slf4j-api" % "2.0.17",
         "org.junit.jupiter" % "junit-jupiter" % "5.14.4" % Test,
