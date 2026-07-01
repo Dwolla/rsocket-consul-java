@@ -4,6 +4,8 @@ import com.dwolla.rsocket.Address;
 import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
+import reactor.core.Disposables;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 
 public class HealthPoller implements AutoCloseable {
   private final int StartingIndex = 0;
+  private final Duration RetryDelay = Duration.ofSeconds(5);
 
   private final String healthUrl = "%s/v1/health/service/%s?passing=true&index=%d&wait=1m";
   private final Gson gson = new Gson();
@@ -35,32 +38,45 @@ public class HealthPoller implements AutoCloseable {
 
   public Flux<Set<Address>> start(String serviceName) {
     return Flux.create(emitter -> {
+      Disposable.Swap backoff = Disposables.swap();
+      emitter.onDispose(backoff);
+
       Recursive<Function<Integer, CompletableFuture<Integer>>> r = new Recursive<>();
       r.func =
-              index ->
-                      client
-                              .get(String.format(healthUrl, consulHost, serviceName, index))
-                              .thenApply(
-                                      res -> {
-                                        int nextIdx = getNextIdxFrom(res);
+              index -> {
+                if (emitter.isCancelled()) {
+                  return CompletableFuture.completedFuture(index);
+                }
 
-                                        if (nextIdx > index) {
-                                          lastResponse = getAddressesFrom(res.getBody());
-                                          emitter.next(lastResponse);
-                                        }
+                return client
+                        .get(String.format(healthUrl, consulHost, serviceName, index))
+                        .thenApply(
+                                res -> {
+                                  int nextIdx = getNextIdxFrom(res);
 
-                                        return nextIdx;
-                                      })
-                              .whenComplete(
-                                      (nextId, th) -> {
-                                        if (th != null) {
-                                          logger.warn("Got an exception while long polling Consul.", th);
-                                          Mono.delay(Duration.ofSeconds(5))
-                                                  .subscribe(i -> r.func.apply(StartingIndex));
-                                        } else {
-                                          r.func.apply(nextId);
-                                        }
-                                      });
+                                  if (nextIdx > index) {
+                                    lastResponse = getAddressesFrom(res.getBody());
+                                    emitter.next(lastResponse);
+                                  }
+
+                                  return nextIdx;
+                                })
+                        .whenComplete(
+                                (nextId, th) -> {
+                                  if (emitter.isCancelled()) {
+                                    return;
+                                  }
+
+                                  if (th != null) {
+                                    logger.warn("Got an exception while long polling Consul.", th);
+                                    backoff.update(
+                                            Mono.delay(RetryDelay)
+                                                    .subscribe(i -> r.func.apply(StartingIndex)));
+                                  } else {
+                                    r.func.apply(nextId);
+                                  }
+                                });
+              };
 
       r.func.apply(StartingIndex);
     });
