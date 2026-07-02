@@ -15,7 +15,7 @@ inThisBuild(List(
   autoScalaLibrary := false,
   crossPaths := false,
 
-  tlBaseVersion := "0.0",
+  tlBaseVersion := "0.1",
   mergifyStewardConfig ~= { _.map {
     _.withAuthor("dwolla-oss-scala-steward[bot]")
       .withMergeMinors(true)
