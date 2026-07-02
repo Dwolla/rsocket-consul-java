@@ -5,7 +5,9 @@ import com.dwolla.rsocket.consul.HttpClient;
 import com.dwolla.rsocket.consul.SimpleResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.test.scheduler.VirtualTimeScheduler;
 
 import java.time.Duration;
 import java.util.*;
@@ -14,7 +16,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class HealthPollerShould {
@@ -170,5 +176,60 @@ class HealthPollerShould {
     assertNotNull(output);
     assertTrue(output.contains(host1));
     assertTrue(output.contains(host2));
+  }
+
+  @Test
+  void stopPollingOnceTheSubscriptionIsCancelled() {
+    final String firstUrl =
+        CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m";
+    final String secondUrl =
+        CONSUL_HOST
+            + "/v1/health/service/"
+            + SERVICE_NAME
+            + "?passing=true&index="
+            + firstIndex
+            + "&wait=1m";
+    final SimpleResponse res = new SimpleResponse(JSON_RES, new ArrayList<>(firstHeaders.entrySet()));
+    final CompletableFuture<SimpleResponse> firstFuture = new CompletableFuture<>();
+
+    when(client.get(firstUrl)).thenReturn(firstFuture);
+
+    // The initial request is issued synchronously on subscribe.
+    final Disposable subscription = poller.start(SERVICE_NAME).subscribe();
+
+    // Cancel before the in-flight request resolves. Completing it now runs the
+    // dependent stages synchronously, so whenComplete observes the cancellation
+    // and returns instead of rescheduling the next poll.
+    subscription.dispose();
+    firstFuture.complete(res);
+
+    verify(client, times(1)).get(anyString());
+    verify(client, never()).get(secondUrl);
+  }
+
+  @Test
+  void notRestartAfterTheBackoffWhenCancelledDuringTheDelay() {
+    final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
+    try {
+      final String firstUrl =
+          CONSUL_HOST + "/v1/health/service/" + SERVICE_NAME + "?passing=true&index=0&wait=1m";
+      final CompletableFuture<SimpleResponse> failedFuture = new CompletableFuture<>();
+
+      when(client.get(firstUrl)).thenReturn(failedFuture);
+
+      final Disposable subscription = poller.start(SERVICE_NAME).subscribe();
+
+      // Exception schedules the 5s backoff on the virtual scheduler.
+      failedFuture.completeExceptionally(new RuntimeException("Something happened"));
+
+      // Cancel during the backoff window, then advance past when it would have fired.
+      subscription.dispose();
+      scheduler.advanceTimeBy(Duration.ofSeconds(6));
+
+      // The loop stays dead: only the initial index=0 request was ever issued.
+      verify(client, times(1)).get(anyString());
+    } finally {
+      VirtualTimeScheduler.reset();
+    }
   }
 }
