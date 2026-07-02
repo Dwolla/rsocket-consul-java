@@ -15,7 +15,7 @@ inThisBuild(List(
   autoScalaLibrary := false,
   crossPaths := false,
 
-  tlBaseVersion := "0.0",
+  tlBaseVersion := "0.1",
   mergifyStewardConfig ~= { _.map {
     _.withAuthor("dwolla-oss-scala-steward[bot]")
       .withMergeMinors(true)
@@ -25,17 +25,6 @@ inThisBuild(List(
   githubWorkflowTargetTags ++= Seq("v*"),
   githubWorkflowPublishTargetBranches :=
     Seq(RefPredicate.StartsWith(Ref.Tag("v"))),
-  githubWorkflowPublish := Seq(
-    WorkflowStep.Sbt(
-      List("ci-release"),
-      env = Map(
-        "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
-        "PGP_SECRET" -> "${{ secrets.PGP_SECRET }}",
-        "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
-        "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
-      )
-    )
-  ),
 
   tlMimaPreviousVersions += "0.0.6",
 ))
