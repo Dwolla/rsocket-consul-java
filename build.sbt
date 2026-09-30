@@ -46,7 +46,7 @@ lazy val `rsocket-consul-java` = (project in file("."))
         "org.junit.platform" % "junit-platform-engine" % "6.1.1" % Test,
         "org.junit.platform" % "junit-platform-launcher" % "6.1.1" % Test,
         "net.aichler" % "jupiter-interface" % JupiterKeys.jupiterVersion.value % Test,
-        "org.mockito" % "mockito-core" % "5.23.0" % Test,
+        "org.mockito" % "mockito-core" % "5.24.0" % Test,
         "io.projectreactor" % "reactor-test" % "3.8.6" % Test,
         "org.slf4j" % "slf4j-nop" % "2.0.18" % Test,
       )
